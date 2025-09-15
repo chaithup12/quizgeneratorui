@@ -1,9 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { QuizApiService, QuizItem, Quiz } from '../../services/quiz-api.service';
-import { QuizzesService} from '../../services/quizapi.service';
-import { QuizInfo } from 'src/app/models/quizapi';
+import { QuizzesService, QuizItem} from '../../services/quizapi.service';
+import { Question, QuizInfo } from 'src/app/models/quizapi';
 // QuizItem interface is now imported from the service
 
 @Component({
@@ -16,7 +15,7 @@ import { QuizInfo } from 'src/app/models/quizapi';
 export class QuizGeneratorComponent {
   inputText = '';
   quiz: QuizItem[] = [];
-  allQuizzes: Quiz[] = []; // Store all generated quizzes from MongoDB
+  quizzes: QuizInfo[] = [];
   isGenerating = false;
   errorMessage = '';
   numQuestions = 3;
@@ -25,6 +24,8 @@ export class QuizGeneratorComponent {
   timeLimit: number | null = null;
   quizTags = '';
   isConnected = false;
+  editingQuizName: string | null = null;
+  editedName = '';
   
   // File upload properties
   selectedFiles: File[] = [];
@@ -34,10 +35,7 @@ export class QuizGeneratorComponent {
   supportedFileTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
   maxFileSize = 10 * 1024 * 1024; // 10MB
 
-  constructor(public quizApiService: QuizApiService,public quizzesservice: QuizzesService) {
-    // Check API connection on component init
-    this.checkConnection();
-    // Load existing quizzes
+  constructor(public quizzesservice: QuizzesService) {
     this.loadQuizzes();
   }
 
@@ -72,12 +70,18 @@ export class QuizGeneratorComponent {
     console.log('Generating quiz with text:', this.inputText.substring(0, 50) + '...');
     console.log('Number of questions:', this.numQuestions);
     
-    // Generate quiz using MongoDB API service
-    const newQuiz = await this.quizApiService.generateQuiz(this.inputText, this.numQuestions).toPromise();
-    console.log('Generated quiz:', newQuiz);
-      
-    this.quiz = newQuiz || [];
-    await this.saveQuiz('text');
+    try {
+      // Generate quiz using GROQ API through service
+      const newQuiz = await this.quizzesservice.generateQuiz(this.inputText, this.numQuestions);
+      console.log('Generated quiz:', newQuiz);
+        
+      this.quiz = newQuiz || [];
+      await this.saveQuiz('text');
+    } catch (error) {
+      console.error('Error generating quiz from text:', error);
+      this.errorMessage = 'Failed to generate quiz. Please try again.';
+      this.isGenerating = false;
+    }
   }
 
   async generateFromFiles() {
@@ -91,7 +95,7 @@ export class QuizGeneratorComponent {
       console.log('Extracted text:', extractedText.substring(0, 100) + '...');
       
       // Generate quiz from extracted text
-      const newQuiz = await this.quizApiService.generateQuiz(extractedText, this.numQuestions).toPromise();
+      const newQuiz = await this.quizzesservice.generateQuiz(extractedText, this.numQuestions);
       console.log('Generated quiz from files:', newQuiz);
       
       this.quiz = newQuiz || [];
@@ -414,24 +418,47 @@ Charts and graphs are powerful tools for learning and assessment, providing conc
       
       const sourceText = source === 'text' ? this.inputText : `Files: ${this.selectedFiles.map(f => f.name).join(', ')}`;
       
-      const quizData: Omit<Quiz, '_id'> = {
+      // Create an object matching the QuizInfo interface for the .NET API
+      const quizInfo: QuizInfo = {
+        id: '',  // Will be assigned by the API
         name: `Quiz ${new Date().toLocaleDateString()} - ${sourceText.substring(0, 30)}...`,
         description: `Generated on ${new Date().toLocaleString()} from ${source}`,
-        questions: this.quiz,
+        questions: this.quiz.map(q => ({
+          id: '',  // Will be assigned by the API
+          text: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer
+        })),
         category: this.selectedCategory,
         difficulty: this.selectedDifficulty,
-        timeLimit: this.timeLimit,
+        timeLimit: this.timeLimit || undefined,
         tags: tags,
         points: this.calculatePoints(),
         createdBy: 'user',
-        isPublic: true
+        isPublic: true,
+        isFeatured: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: 1,
+        stats: {
+          totalAttempts: 0,
+          averageScore: 0,
+          totalTime: 0,
+          averageRating: 0,
+          ratings: []
+        }
       };
       
-      const savedQuiz = await this.quizApiService.createQuiz(quizData).toPromise();
-      console.log('Quiz saved successfully:', savedQuiz);
-      
-      // Reload quizzes to get the updated list
-      this.loadQuizzes();
+      try {
+        const savedQuiz = await this.quizzesservice.create(quizInfo).toPromise();
+        console.log('Quiz saved successfully:', savedQuiz);
+        
+        // Reload quizzes to get the updated list
+        this.loadQuizzes();
+      } catch (error) {
+        console.error('Failed to save quiz:', error);
+        this.errorMessage = 'Failed to save quiz to database.';
+      }
     } else {
       console.error('No quiz generated - empty array');
       this.errorMessage = 'No quiz was generated. Please try again.';
@@ -535,7 +562,7 @@ Charts and graphs are powerful tools for learning and assessment, providing conc
   }
 
   clearAllQuizzes() {
-    this.allQuizzes = [];
+    this.quizzes = [];
     this.quiz = [];
     this.inputText = '';
     this.errorMessage = '';
@@ -563,9 +590,18 @@ Charts and graphs are powerful tools for learning and assessment, providing conc
 
   async loadQuizzes() {
     try {
-      this.quizApiService.getAllQuizzes().subscribe({
+      this.quizzesservice.list().subscribe({
         next: (quizzes) => {
-          this.allQuizzes = quizzes;
+          console.log('Received quizzes response:', quizzes);
+          if (quizzes && Array.isArray(quizzes.items)) {
+            this.quizzes = quizzes.items;
+          } else if (Array.isArray(quizzes)) {
+            // Handle case where API returns array instead of paged result
+            this.quizzes = quizzes;
+          } else {
+            console.error('Unexpected response format:', quizzes);
+            this.errorMessage = 'Unexpected response format from API.';
+          }
         },
         error: (error) => {
           console.error('Error loading quizzes:', error);
@@ -574,23 +610,6 @@ Charts and graphs are powerful tools for learning and assessment, providing conc
       });
     } catch (error) {
       console.error('Error loading quizzes:', error);
-    }
-  }
-
-  async checkConnection() {
-    try {
-      this.quizApiService.healthCheck().subscribe({
-        next: (response) => {
-          this.isConnected = response.mongodb === 'Connected';
-        },
-        error: (error) => {
-          console.error('API connection error:', error);
-          this.isConnected = false;
-        }
-      });
-    } catch (error) {
-      console.error('API connection error:', error);
-      this.isConnected = false;
     }
   }
 
@@ -606,10 +625,34 @@ Charts and graphs are powerful tools for learning and assessment, providing conc
     }
   }
 
+  startEditingQuizName(quizId: string, currentName: string) {
+    this.editingQuizName = quizId;
+    this.editedName = currentName;
+  }
+
+  saveQuizName(quiz: QuizInfo) {
+    if (this.editedName.trim()) {
+      quiz.name = this.editedName.trim();
+      this.quizzesservice.update(quiz.id, quiz).toPromise()
+        .then(() => {
+          console.log('Quiz name updated successfully');
+        })
+        .catch(error => {
+          console.error('Error updating quiz name:', error);
+        });
+    }
+    this.editingQuizName = null;
+  }
+
+  cancelEditingQuizName() {
+    this.editingQuizName = null;
+    this.editedName = '';
+  }
+
   async deleteQuiz(quizId: string) {
     if (confirm('Are you sure you want to delete this quiz?')) {
       try {
-        await this.quizApiService.deleteQuiz(quizId).toPromise();
+        await this.quizzesservice.remove(quizId).toPromise();
         this.loadQuizzes(); // Reload the list
         alert('Quiz deleted successfully!');
       } catch (error) {

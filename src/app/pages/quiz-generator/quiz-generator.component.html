@@ -213,20 +213,39 @@
     </div>
   </div>
 
-  <div *ngIf="allQuizzes.length > 0" class="quiz-preview-section">
+  <div *ngIf="quizzes.length > 0" class="quiz-preview-section">
     <div class="section-header">
       <h2>All Generated Quizzes</h2>
       <div class="quiz-stats">
-        <span class="stat">{{ allQuizzes.length }} Quiz{{ allQuizzes.length > 1 ? 'es' : '' }}</span>
+        <span class="stat">{{ quizzes.length }} Quiz{{ quizzes.length > 1 ? 'es' : '' }}</span>
         <span class="stat">Multiple Choice</span>
         <span class="stat">{{ isConnected ? 'MongoDB Connected' : 'MongoDB Disconnected' }}</span>
       </div>
     </div>
     
     <div class="all-quizzes-container">
-      <div *ngFor="let quiz of allQuizzes; let quizIndex = index" class="quiz-container">
+      <div *ngFor="let quiz of quizzes; let quizIndex = index" class="quiz-container">
         <div class="quiz-header">
-          <h3>{{ quiz.name }}</h3>
+          <div class="quiz-name-container">
+            <h3 *ngIf="editingQuizName !== quiz.id" (click)="startEditingQuizName(quiz.id!, quiz.name)" class="editable-quiz-name">
+              {{ quiz.name }} <span class="edit-icon">✏️</span>
+            </h3>
+            <div *ngIf="editingQuizName === quiz.id" class="quiz-name-editor">
+              <input 
+                type="text" 
+                [(ngModel)]="editedName" 
+                class="name-input" 
+                placeholder="Enter quiz name" 
+                (keyup.enter)="saveQuizName(quiz)"
+                (keyup.escape)="cancelEditingQuizName()"
+                #nameInput
+              >
+              <div class="edit-buttons">
+                <button class="btn-save" (click)="saveQuizName(quiz)">✓</button>
+                <button class="btn-cancel" (click)="cancelEditingQuizName()">✕</button>
+              </div>
+            </div>
+          </div>
           <div class="quiz-meta">
             <span class="quiz-question-count">{{ quiz.questions.length }} Questions</span>
             <span class="quiz-category">{{ quiz.category }}</span>
@@ -243,7 +262,7 @@
           <div *ngFor="let q of quiz.questions; let i = index" class="question-card">
             <div class="question-header">
               <span class="question-number">{{ i + 1 }}</span>
-              <h4 class="question-text">{{ q.question }}</h4>
+              <h4 class="question-text">{{ q.text }}</h4>
             </div>
             
             <div class="options-list">
@@ -262,7 +281,7 @@
           <button class="btn btn-primary btn-sm" (click)="saveIndividualQuiz(quiz, quizIndex)">
             💾 Update Quiz
           </button>
-          <button class="btn btn-danger btn-sm" (click)="deleteQuiz(quiz._id!)">
+          <button class="btn btn-danger btn-sm" (click)="deleteQuiz(quiz.id!)">
             🗑️ Delete Quiz
           </button>
         </div>

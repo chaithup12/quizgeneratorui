@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { environment } from 'src/environments/environment';
 
 export interface User {
   _id: string;
@@ -69,7 +70,7 @@ export class AuthService {
     firstName?: string;
     lastName?: string;
   }): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API_URL}/register`, userData)
+    return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/api/users/register`, userData)
       .pipe(
         tap(response => {
           this.setAuthData(response.token, response.user);
@@ -78,7 +79,7 @@ export class AuthService {
   }
 
   login(credentials: { email: string; password: string }): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials)
+    return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/api/users/login`, credentials)
       .pipe(
         tap(response => {
           this.setAuthData(response.token, response.user);

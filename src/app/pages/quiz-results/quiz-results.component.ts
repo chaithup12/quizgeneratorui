@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { QuizItem, Quiz } from '../../services/quiz-api.service';
+import { QuizItem } from '../../services/quizapi.service';
 
 export interface QuizResult {
   quizId: string;

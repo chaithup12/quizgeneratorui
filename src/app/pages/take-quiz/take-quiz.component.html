@@ -4,7 +4,7 @@
     <p class="loading-text">Loading quizzes...</p>
   </div>
 
-  <div *ngIf="!loading && availableQuizzes.length > 0 && quizzes.length === 0" class="quiz-selection">
+  <div *ngIf="!loading && allQuizzes.length > 0 && quizzes.length === 0" class="quiz-selection">
     <div class="quiz-header">
       <h2>Select a Quiz to Take</h2>
       <p>Choose from your saved quizzes below</p>
@@ -69,15 +69,15 @@
       </div>
     </div>
 
-    <div class="quiz-stats" *ngIf="filteredQuizzes.length !== availableQuizzes.length">
-      <span>Showing {{ filteredQuizzes.length }} of {{ availableQuizzes.length }} quizzes</span>
+    <div class="quiz-stats" *ngIf="filteredQuizzes.length !== allQuizzes.length">
+      <span>Showing {{ filteredQuizzes.length }} of {{ allQuizzes.length }} quizzes</span>
     </div>
 
     <div class="quiz-list">
       <div *ngFor="let availableQuiz of filteredQuizzes" 
            class="quiz-item"
-           [class.selected]="selectedQuizKey === availableQuiz._id"
-           (click)="selectQuiz(availableQuiz._id!)">
+           [class.selected]="selectedQuizKey === availableQuiz.id"
+           (click)="selectQuiz(availableQuiz.id!)">
         <div class="quiz-info">
           <div class="quiz-title-section">
             <h3>{{ availableQuiz.name }}</h3>
@@ -145,7 +145,7 @@
 
     <form class="quiz-form" (ngSubmit)="submitQuiz()">
       <div *ngFor="let quiz of quizzes; let i = index" class="question-card">
-        <h3 class="question-text">{{ i + 1 }}. {{ quiz.question }}</h3>
+        <h3 class="question-text">{{ i + 1 }}. {{ quiz.text }}</h3>
         
         <div class="radio-group">
           <div *ngFor="let option of quiz.options; let j = index" 
@@ -207,7 +207,7 @@
     </div>
   </div>
 
-  <div *ngIf="!loading && availableQuizzes.length === 0" class="empty-state">
+  <div *ngIf="!loading && allQuizzes.length === 0" class="empty-state">
     <h3>No Quizzes Available</h3>
     <p>Please generate and save some quizzes first in the Quiz Generator section.</p>
     <a routerLink="/quiz-generator" class="btn btn-primary">Generate Quiz</a>

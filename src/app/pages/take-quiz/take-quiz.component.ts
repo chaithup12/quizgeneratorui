@@ -6,8 +6,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { QuizApiService, QuizItem, Quiz } from '../../services/quiz-api.service';
 import { QuizTimerService, TimerState } from '../../services/quiz-timer.service';
+import { QuizzesService } from 'src/app/services/quizapi.service';
+import { Question, QuizInfo } from 'src/app/models/quizapi';
 
 @Component({
   selector: 'app-take-quiz',
@@ -18,11 +19,12 @@ import { QuizTimerService, TimerState } from '../../services/quiz-timer.service'
 })
 export class TakeQuizComponent implements OnInit, OnDestroy {
   loading = false;
-  quizzes: QuizItem[] = [];
+  quizzes: Question[] = [];
   answers: number[] = [];
   score: number | null = null;
-  availableQuizzes: Quiz[] = [];
-  filteredQuizzes: Quiz[] = [];
+  //availableQuizzes: Quiz[] = [];
+  allQuizzes: QuizInfo[] = [];
+  filteredQuizzes: QuizInfo[] = [];
   selectedQuizKey: string = '';
   isConnected = false;
   
@@ -36,7 +38,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
   
   // Timer properties
   timeLimit: number = 0; // in minutes
-  selectedQuiz: Quiz | null = null;
+  selectedQuiz: QuizInfo | null = null;
   timeSpent: number = 0; // in seconds
   quizStartTime: number = 0;
   timerState: TimerState = {
@@ -49,10 +51,10 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
   };
 
   constructor(
-    private quizApiService: QuizApiService,
+    private quizzesservice: QuizzesService,
     private quizTimerService: QuizTimerService
   ) {
-    this.checkConnection();
+    //this.checkConnection();
     this.loadAvailableQuizzes();
     this.subscribeToTimer();
   }
@@ -101,7 +103,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
     
     // Create submission data
     const submission = {
-      quizId: this.selectedQuiz._id!,
+      quizId: this.selectedQuiz.id!,
       answers: this.answers,
       score: this.score,
       timeSpent: this.timeSpent,
@@ -109,7 +111,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
     };
     
     // Submit to API
-    this.quizApiService.submitQuiz(submission).subscribe({
+    this.quizzesservice.submitQuiz(submission).subscribe({
       next: (response) => {
         console.log('Quiz submitted successfully:', response);
       },
@@ -141,26 +143,34 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
 
   loadAvailableQuizzes() {
     this.loading = true;
-    this.availableQuizzes = [];
+    this.allQuizzes = [];
     
-    this.quizApiService.getAllQuizzes().subscribe({
+    this.quizzesservice.list().subscribe({
       next: (quizzes) => {
         console.log('All quizzes from API:', quizzes);
         // Filter out quizzes with empty questions array
-        this.availableQuizzes = quizzes.filter(quiz => quiz.questions && quiz.questions.length > 0);
-        console.log('Filtered quizzes:', this.availableQuizzes);
-        
+        this.allQuizzes = quizzes.items.filter(quiz => quiz.questions && quiz.questions.length > 0);
+        console.log('Filtered quizzes:', this.allQuizzes);
+        this.filterQuizzes();
         // Extract available tags
         this.extractAvailableTags();
+
         
-        // If no valid quizzes found, add default quiz
-        if (this.availableQuizzes.length === 0) {
-          this.availableQuizzes = [{
-            _id: 'default',
+        /* // If no valid quizzes found, add default quiz
+        if (this.allQuizzes.length === 0) {
+          this.allQuizzes = [{
+            id: 'default',
             name: 'Sample Quiz',
             description: 'Default sample quiz',
             questions: this.getDefaultQuizzes(),
             category: 'General',
+            stats: {
+              totalAttempts: 0,
+              averageScore: 0,
+              totalTime: 0,
+              averageRating: 0,
+              ratings: []
+            },
             difficulty: 'Medium',
             points: 10,
             tags: ['sample'],
@@ -178,8 +188,8 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error loading quizzes:', error);
         // Fallback to default quiz if API fails
-        this.availableQuizzes = [{
-          _id: 'default',
+        this.allQuizzes = [{
+          id: 'default',
           name: 'Sample Quiz',
           description: 'Default sample quiz',
           questions: this.getDefaultQuizzes(),
@@ -188,8 +198,9 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
           isPublic: true
         }];
         this.loading = false;
-      }
-    });
+      } });*/
+       this.loading = false;
+      }});
   }
 
   selectQuiz(quizId: string) {
@@ -206,14 +217,14 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
     console.log('Loading selected quiz:', this.selectedQuizKey);
     this.loading = true;
     setTimeout(() => {
-      const selectedQuiz = this.availableQuizzes.find(q => q._id === this.selectedQuizKey);
+      const selectedQuiz = this.allQuizzes.find(q => q.id === this.selectedQuizKey);
       console.log('Selected quiz found:', selectedQuiz);
       if (selectedQuiz) {
         this.selectedQuiz = selectedQuiz;
         this.quizzes = [...selectedQuiz.questions]; // Create a copy to avoid reference issues
         console.log('Loaded questions:', this.quizzes);
         console.log('Number of questions loaded:', this.quizzes.length);
-        console.log('Selected quiz ID:', selectedQuiz._id);
+        console.log('Selected quiz ID:', selectedQuiz.id);
         console.log('Selected quiz name:', selectedQuiz.name);
         this.answers = new Array(this.quizzes.length).fill(-1);
         this.score = null;
@@ -238,32 +249,23 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
     }, 500);
   }
 
-  checkConnection() {
-    this.quizApiService.healthCheck().subscribe({
-      next: (response) => {
-        this.isConnected = response.mongodb === 'Connected';
-      },
-      error: (error) => {
-        console.error('API connection error:', error);
-        this.isConnected = false;
-      }
-    });
-  }
-
-  private getDefaultQuizzes(): QuizItem[] {
+  private getDefaultQuizzes(): Question[] {
     return [
       {
-        question: 'What is the capital of France?',
+        id: 'default',
+        text: 'What is the capital of France?',
         options: ['Berlin', 'Madrid', 'Paris', 'Rome'],
         correctAnswer: 2,
       },
       {
-        question: 'Which planet is known as the Red Planet?',
+        id: 'default',
+        text: 'Which planet is known as the Red Planet?',
         options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
         correctAnswer: 1,
       },
       {
-        question: 'What is 2 + 2?',
+        id: 'default',
+        text: 'What is 2 + 2?',
         options: ['3', '4', '5', '6'],
         correctAnswer: 1,
       }
@@ -291,7 +293,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
     let correct = 0;
     this.quizzes.forEach((quiz, index) => {
       console.log(`Question ${index + 1}:`, {
-        question: quiz.question,
+        question: quiz.text,
         userAnswer: this.answers[index],
         correctAnswer: quiz.correctAnswer,
         isCorrect: this.answers[index] === quiz.correctAnswer
@@ -315,7 +317,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
   }
 
   getSelectedQuizName(): string {
-    const selectedQuiz = this.availableQuizzes.find(q => q._id === this.selectedQuizKey);
+    const selectedQuiz = this.allQuizzes.find(q => q.id === this.selectedQuizKey);
     return selectedQuiz ? selectedQuiz.name : 'Unknown Quiz';
   }
 
@@ -386,7 +388,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
   // Search and filtering methods
   extractAvailableTags(): void {
     const allTags = new Set<string>();
-    this.availableQuizzes.forEach(quiz => {
+    this.allQuizzes.forEach(quiz => {
       if (quiz.tags) {
         quiz.tags.forEach(tag => allTags.add(tag));
       }
@@ -395,7 +397,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
   }
 
   filterQuizzes(): void {
-    let filtered = [...this.availableQuizzes];
+    let filtered = [...this.allQuizzes];
 
     // Search by name or description
     if (this.searchQuery.trim()) {
@@ -429,7 +431,7 @@ export class TakeQuizComponent implements OnInit, OnDestroy {
     this.filteredQuizzes = filtered;
   }
 
-  sortQuizzes(quizzes: Quiz[]): Quiz[] {
+  sortQuizzes(quizzes: QuizInfo[]): QuizInfo[] {
     const sorted = [...quizzes];
     
     switch (this.sortBy) {
