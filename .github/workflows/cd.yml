@@ -173,7 +173,7 @@ jobs:
         # Example: Deploy to Vercel, Netlify, or your preview environment
 
     - name: Comment PR with preview URL
-      uses: actions/github-script@v6
+      uses: actions/github-script@v8
       with:
         script: |
           github.rest.issues.createComment({
