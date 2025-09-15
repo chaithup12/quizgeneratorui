@@ -58,7 +58,7 @@
     "docker:compose:down": "docker-compose down",
     "k8s:apply": "kubectl apply -f k8s/",
     "k8s:delete": "kubectl delete -f k8s/",
-    "bundlesize": "bundlesize",
+    "bundlesize": "npm:bundlesize-snapshot@^0.0.10",
     "lighthouse": "lhci autorun",
     "prepare": "husky install",
     "audit": "auditjs ossi",
@@ -84,14 +84,13 @@
     "@jsverse/transloco": "^7.6.1",
     "@tailwindcss/postcss": "^4.1.11",
     "groq-sdk": "^0.32.0",
+    "license-checker": "^25.0.1",
     "postcss": "^8.5.6",
     "rxjs": "~7.8.2",
     "tailwindcss": "^4.1.11",
     "tesseract.js": "^6.0.1",
     "tslib": "^2.6.3",
-    "zone.js": "^0.15.1",
-    "bundlesize": "^0.18.2",
-    "license-checker": "^25.0.1"
+    "zone.js": "^0.15.1"
   },
   "devDependencies": {
     "@angular-eslint/builder": "^20.1.1",
