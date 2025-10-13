@@ -118,7 +118,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.18.1",
     "@typescript-eslint/eslint-plugin": "8.35.1",
-    "@typescript-eslint/parser": "8.35.1",
+    "@typescript-eslint/parser": "8.46.0",
     "auditjs": "^4.0.47",
     "auto-changelog": "^2.5.0",
     "babel-loader": "^9.2.1",
