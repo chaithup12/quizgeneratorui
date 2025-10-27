@@ -34,7 +34,7 @@ jobs:
         cd backend && npm audit --audit-level=moderate --json > ../backend-audit.json || true
 
     - name: Upload audit results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: audit-results
         path: |
@@ -151,7 +151,7 @@ jobs:
         cd backend && npx license-checker --json > ../backend-licenses.json
 
     - name: Upload license results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: license-results
         path: |

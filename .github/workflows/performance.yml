@@ -86,7 +86,7 @@ jobs:
         artillery run load-tests/stress-test.yml
 
     - name: Upload load test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: load-test-results
         path: |
@@ -119,7 +119,7 @@ jobs:
         npx webpack-bundle-analyzer dist/stats.json --mode static --report bundle-report.html
 
     - name: Upload bundle report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: bundle-analysis
         path: |
