@@ -127,7 +127,7 @@
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-jsdoc": "^51.3.3",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-storybook": "^9.0.15",
+    "eslint-plugin-storybook": "^9.1.15",
     "husky": "^9.1.7",
     "jest": "^30.0.4",
     "jest-junit": "^16.0.0",
